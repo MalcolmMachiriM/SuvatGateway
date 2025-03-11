@@ -1,6 +1,6 @@
 using System;
-using API.Entities;
 using Microsoft.EntityFrameworkCore;
+using SuvatGatewayBackend.Entities;
 
 namespace SuvatGatewayBackend.Data;
 

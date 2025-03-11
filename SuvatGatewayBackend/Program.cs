@@ -1,22 +1,17 @@
-using Microsoft.EntityFrameworkCore;
-using SuvatGatewayBackend.Data;
+using SuvatGatewayBackend.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
+builder.Services.AddApplicationServices(builder.Configuration); //created this to extensions
 
-builder.Services.AddControllers();
-builder.Services.AddDbContext<DataContext>(opt=>
-{
-    opt.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"));
-});
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddIdentityServices(builder.Configuration); //extracted this to extensions
 
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
+app.UseCors(x => x.AllowAnyHeader().AllowAnyMethod().WithOrigins("http://localhost:4200", "https://localhost:4200", "http://localhost:5134"));
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -25,6 +20,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
