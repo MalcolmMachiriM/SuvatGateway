@@ -21,7 +21,11 @@ public class AccountController(DataContext context, ITokenService tokenService):
 
         var user = new AppUser
         {
+            Firstname = registerDto.Firstname,
+            Lastname = registerDto.Lastname,
             UserName = registerDto.Username.ToLower(),
+            Email = registerDto.Email,
+            PhoneNumber = registerDto.PhoneNumber,
             PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registerDto.Password)),
             PasswordSalt = hmac.Key
         };
