@@ -62,7 +62,7 @@ namespace API.DAta.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Businesses");
+                    b.ToTable("Businesses", (string)null);
                 });
 
             modelBuilder.Entity("SuvatGatewayBackend.Entities.AppUser", b =>
@@ -101,7 +101,7 @@ namespace API.DAta.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Users");
+                    b.ToTable("Users", (string)null);
                 });
 
             modelBuilder.Entity("SuvatGatewayBackend.Entities.Application", b =>
@@ -128,7 +128,7 @@ namespace API.DAta.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("Applications");
+                    b.ToTable("Applications", (string)null);
                 });
 #pragma warning restore 612, 618
         }
