@@ -15,4 +15,6 @@ public class AppBusiness
     public required string RegistrationNumber { get; set; }
     public required string RegistrationType { get; set; }
     public required string Address { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public DateTime UpdatedDate { get; set; }
 }

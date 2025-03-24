@@ -8,10 +8,11 @@ using SuvatGatewayBackend.Entities;
 
 namespace SuvatGatewayBackend.Controllers;
 
-public class ApplicationsController(DataContext context): BaseApiController
+[Authorize]
+public class ApplicationsController(DataContext context) : BaseApiController
 {
-    [Authorize]
-    [HttpPost("register/business")]
+
+    [HttpPost("create/application")]
     public async Task<ActionResult<Application>> AddApplication(ApplicationDto applicationDto)
     {
         if (await ApplicationExists(applicationDto.Name)) return BadRequest("Application exists");
@@ -22,7 +23,7 @@ public class ApplicationsController(DataContext context): BaseApiController
             TransactionFeeChargeType = applicationDto.TransactionFeeChargeType,
             Description = applicationDto.Description,
             PaymentPage = applicationDto.PaymentPage
-            
+
         };
 
         context.Applications.Add(app);
@@ -31,10 +32,29 @@ public class ApplicationsController(DataContext context): BaseApiController
         return app;
     }
 
-    [HttpGet("business/exists/{name}")]
+    [HttpGet("application/exists/{name}")]
     public async Task<bool> ApplicationExists(string name)
     {
-        return await context.Applications.AnyAsync(x=> x.Name.ToLower() == name.ToLower());
+        return await context.Applications.AnyAsync(x => x.Name.ToLower() == name.ToLower());
     }
+
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Application>>> GetApplications()
+    {
+        var apps = await context.Applications.ToListAsync();
+
+        return apps;
+    }
+
+    [HttpGet("{id:int}")]
+    public async Task<ActionResult<Application>> GetApplication(int id)
+    {
+        var app = await context.Applications.FindAsync(id);
+
+        if (app == null) return NotFound();
+
+        return app;
+    }
+
 
 }

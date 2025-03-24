@@ -1,10 +1,9 @@
 using System;
 
-namespace SuvatGatewayBackend.Entities;
+namespace SuvatGatewayBackend.DTOs;
 
-public class PayTransaction
+public class TransactionDto
 {
-    public int Id { get; set; }
     public required string ReferenceNumber { get; set; }
     public float Amount { get; set; }
     public DateTime TransactionDate { get; set; }
@@ -15,5 +14,4 @@ public class PayTransaction
     public float TransactionFee { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime UpdatedDate { get; set; }
-
 }

@@ -13,4 +13,6 @@ public class AppUser
     public required byte[] PasswordHash { get; set; }
     public required byte[] PasswordSalt { get; set; }
     public int BusinessId { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public DateTime UpdatedDate { get; set; }
 }

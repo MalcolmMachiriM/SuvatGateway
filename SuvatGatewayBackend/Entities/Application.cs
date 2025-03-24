@@ -10,4 +10,6 @@ public class Application
     public string? Description { get; set; }
     public bool PaymentPage { get; set; }
     public int BusinessId { get; set; }
+    public DateTime CreatedDate { get; set; }
+    public DateTime UpdatedDate { get; set; }
 }
