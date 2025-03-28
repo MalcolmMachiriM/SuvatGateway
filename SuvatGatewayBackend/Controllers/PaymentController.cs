@@ -6,10 +6,10 @@ using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Controllers;
 
-public class PaymentController:BaseApiController
+public class PaymentController :BaseApiController
 {
     private readonly IPaymentService _paymentService;
-    private readonly PaymentDbContext _dbContext;
+    private readonly DataContext _dbContext;
 
     public PaymentController(IPaymentService paymentService)
     {
@@ -18,18 +18,15 @@ public class PaymentController:BaseApiController
     }
 
     [HttpPost("process")] 
-    public async Task<IActionResult> ProcessPayment([FromBody] PaymentRequest request)
+    public async Task<IActionResult> ProcessPayment([FromBody] EcopayRequest request)
     {
         var result = await _paymentService.ProcessPaymentAsync(request);
         
         var transaction = new PaymentTransaction
         {
-            Provider = request.Provider,
-            PhoneNumber = request.PhoneNumber,
-            CardNumber = request.CardNumber,
+            Provider = request.ProvisionedService,
+            PhoneNumber = request.Payer,
             Amount = request.Amount,
-            Success = result.Success,
-            Message = result.Message,
             Timestamp = DateTime.UtcNow
         };
         

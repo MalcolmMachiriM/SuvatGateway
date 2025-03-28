@@ -5,5 +5,5 @@ namespace SuvatGatewayBackend.Interfaces;
 
 public interface IPaymentService
 {
-    Task<PaymentResponse> ProcessPaymentAsync(PaymentRequest request);
+    Task<PaymentResponse> ProcessPaymentAsync(EcopayRequest request);
 }

@@ -7,59 +7,55 @@ using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Services;
 
-public class PaymentService : IPaymentService
+public class PaymentService( IConfiguration config) : IPaymentService
 {
-    private readonly PaymentDbContext _dbContext;
     private readonly HttpClient _httpClient;
-    public async Task<PaymentResponse> ProcessPaymentAsync(PaymentRequest request)
+    private readonly IConfiguration _configuration;
+        public async Task<PaymentResponse> ProcessPaymentAsync(EcopayRequest request)
     {
-        switch (request.Provider.ToLower())
+        switch (request.ProvisionedService.ToLower())
         {
             case "ecocash":
                 return await ProcessEcoCashPayment(request);
-            case "onemoney":
-                return await ProcessOneMoneyPayment(request);
-            case "visa":
-                return await ProcessVisaPayment(request);
+            // case "onemoney":
+            //     return await ProcessOneMoneyPayment(request);
+            // case "visa":
+            //     return await ProcessVisaPayment(request);
             default:
                 return new PaymentResponse { Success = false, Message = "Invalid provider" };
         }
     }
 
     
-     private async Task<PaymentResponse> ProcessEcoCashPayment(PaymentRequest request)
+     private async Task<PaymentResponse> ProcessEcoCashPayment(EcopayRequest request)
     {
         var payload = new
         {
-            phoneNumber = request.PhoneNumber,
             amount = request.Amount,
-            currenc = request.Currency
+            payer = request.Payer,
+            transType = "payment",
+            currency = request.Currency,
+            merchantCode = "052736", 
+            provisionedService = "Ecocash" 
         };
 
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-        var response = await _httpClient.PostAsync("https://api.ecocash.co.zw/payments", content);
+        _httpClient.DefaultRequestHeaders.Clear();
+        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {config["EcopayApiToken"]}");
+        _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
+        var response = await _httpClient.PostAsync(config["EcopayUrl"], content);
+        
         if (response.IsSuccessStatusCode)
         {
             return new PaymentResponse { Success = true, Message = "EcoCash payment successful" };
         }
         else
         {
-            return new PaymentResponse { Success = false, Message = "EcoCash payment failed" };
+            var errorMessage = await response.Content.ReadAsStringAsync();
+            return new PaymentResponse { Success = false, Message = $"EcoCash payment failed: {errorMessage}" };
         }
     }
 
-    private async Task<PaymentResponse> ProcessOneMoneyPayment(PaymentRequest request)
-    {
-        // TODO: Implement real API integration
-        await Task.Delay(1000);
-        return new PaymentResponse { Success = true, Message = "OneMoney payment successful" };
-    }
-
-    private async Task<PaymentResponse> ProcessVisaPayment(PaymentRequest request)
-    {
-        // TODO: Implement real API integration
-        await Task.Delay(1000);
-        return new PaymentResponse { Success = true, Message = "Visa payment successful" };
-    }
+    
 }

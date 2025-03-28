@@ -17,4 +17,5 @@ public class DataContext(DbContextOptions options): DbContext(options)
     public DbSet<InvPayer> InvPayers { get; set; }
     public DbSet<TransactionStatus> TransactionStatuses { get; set; }
     public DbSet<PayTransaction> PayTransactions { get; set; }
+    public DbSet<PaymentTransaction> PaymentTransactions { get; set; }
 }
