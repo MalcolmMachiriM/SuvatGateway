@@ -8,6 +8,6 @@ public class EcopayRequest
     public required string Payer { get; set; }
     public required string TransType { get; set; }
     public required string Currency { get; set; }
-    public required string MerchantCode { get; set; }
+    // public required string MerchantCode { get; set; }
     public required string ProvisionedService { get; set; }
 }

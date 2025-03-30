@@ -34,7 +34,7 @@ public class PaymentService( IConfiguration config, HttpClient httpClient) : IPa
             payer = request.Payer,
             transType = "PAYIN",
             currency = request.Currency,
-            merchantCode = "052736", 
+            merchantCode = config["MerchantCode"], 
             provisionedService = "ecocash" 
         };
 

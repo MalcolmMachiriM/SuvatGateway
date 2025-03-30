@@ -6,21 +6,13 @@ using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Controllers;
 
-public class PaymentController :BaseApiController
+public class PaymentController(DataContext context, IPaymentService paymentService) :BaseApiController
 {
-    private readonly IPaymentService _paymentService;
-    private readonly DataContext _dbContext;
-
-    public PaymentController(IPaymentService paymentService)
-    {
-        _paymentService = paymentService;
-        
-    }
-
+    
     [HttpPost("process")] 
-    public async Task<IActionResult> ProcessPayment([FromBody] EcopayRequest request)
+    public async Task<ActionResult> ProcessPayment([FromBody] EcopayRequest request)
     {
-        var result = await _paymentService.ProcessPaymentAsync(request);
+        var result = await paymentService.ProcessPaymentAsync(request);
         
         var transaction = new PaymentTransaction
         {
@@ -30,8 +22,8 @@ public class PaymentController :BaseApiController
             Timestamp = DateTime.UtcNow
         };
         
-        _dbContext.PaymentTransactions.Add(transaction);
-        await _dbContext.SaveChangesAsync();
+        context.PaymentTransactions.Add(transaction);
+        await context.SaveChangesAsync();
         
         return Ok(result);
     }
