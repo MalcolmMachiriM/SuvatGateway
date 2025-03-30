@@ -7,10 +7,9 @@ using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Services;
 
-public class PaymentService( IConfiguration config) : IPaymentService
+public class PaymentService( IConfiguration config, HttpClient httpClient) : IPaymentService
 {
-    private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
+    
         public async Task<PaymentResponse> ProcessPaymentAsync(EcopayRequest request)
     {
         switch (request.ProvisionedService.ToLower())
@@ -33,18 +32,18 @@ public class PaymentService( IConfiguration config) : IPaymentService
         {
             amount = request.Amount,
             payer = request.Payer,
-            transType = "payment",
+            transType = "PAYIN",
             currency = request.Currency,
             merchantCode = "052736", 
-            provisionedService = "Ecocash" 
+            provisionedService = "ecocash" 
         };
 
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-        _httpClient.DefaultRequestHeaders.Clear();
-        _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {config["EcopayApiToken"]}");
-        _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
+        httpClient.DefaultRequestHeaders.Clear();
+        httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {config["EcopayApiToken"]}");
+        httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-        var response = await _httpClient.PostAsync(config["EcopayUrl"], content);
+        var response = await httpClient.PostAsync(config["EcopayUrl"], content);
         
         if (response.IsSuccessStatusCode)
         {
