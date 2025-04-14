@@ -17,4 +17,7 @@ public class AppBusiness
     public required string Address { get; set; }
     public DateTime CreatedDate { get; set; }
     public DateTime UpdatedDate { get; set; }
+    public List<AppUser> Users { get; set; } = [];
+    public List<Application> Applications {get; set;} = [];
+    
 }

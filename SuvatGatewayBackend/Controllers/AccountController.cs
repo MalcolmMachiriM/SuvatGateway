@@ -10,7 +10,7 @@ using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Controllers;
 
-public class AccountController(DataContext context, ITokenService tokenService):BaseApiController
+public class AccountController(DataContext context, ITokenService tokenService,IUserRepository userRepository):BaseApiController
 {
     [HttpPost("register")] // 
     public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
@@ -67,7 +67,7 @@ public class AccountController(DataContext context, ITokenService tokenService):
     [HttpGet("exists/{username}")]
     public async Task<bool> UserExists(string username)
     {
-        return await context.Users.AnyAsync(x=> x.UserName.ToLower() == username.ToLower());
+        return await context.Users.AnyAsync(x => x.UserName.ToLower() == username.ToLower());
     }
 
     
