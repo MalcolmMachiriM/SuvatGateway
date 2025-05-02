@@ -1,4 +1,5 @@
 using System;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using SuvatGatewayBackend.Data;
@@ -7,10 +8,10 @@ using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Services;
 
-public class PaymentService( IConfiguration config, HttpClient httpClient) : IPaymentService
+public class PaymentService(IConfiguration config, HttpClient httpClient) : IPaymentService
 {
-    
-        public async Task<PaymentResponse> ProcessPaymentAsync(EcopayRequest request)
+
+    public async Task<PaymentResponse> ProcessPaymentAsync(EcopayRequest request)
     {
         switch (request.ProvisionedService.ToLower())
         {
@@ -25,8 +26,8 @@ public class PaymentService( IConfiguration config, HttpClient httpClient) : IPa
         }
     }
 
-    
-     private async Task<PaymentResponse> ProcessEcoCashPayment(EcopayRequest request)
+
+    private async Task<PaymentResponse> ProcessEcoCashPayment(EcopayRequest request)
     {
         var payload = new
         {
@@ -34,8 +35,8 @@ public class PaymentService( IConfiguration config, HttpClient httpClient) : IPa
             payer = request.Payer,
             transType = "PAYIN",
             currency = request.Currency,
-            merchantCode = config["MerchantCode"], 
-            provisionedService = "ecocash" 
+            merchantCode = config["MerchantCode"],
+            provisionedService = "ecocash"
         };
 
         var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
@@ -43,18 +44,48 @@ public class PaymentService( IConfiguration config, HttpClient httpClient) : IPa
         httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {config["EcopayApiToken"]}");
         httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
 
-        var response = await httpClient.PostAsync(config["EcopayUrl"], content);
-        
-        if (response.IsSuccessStatusCode)
+        var initialResponse = await httpClient.PostAsync(config["EcopayUrl"], content);
+
+        if (!initialResponse.IsSuccessStatusCode)
         {
-            return new PaymentResponse { Success = true, Message = "EcoCash payment successful" };
+            var error = await initialResponse.Content.ReadAsStringAsync();
+            return new PaymentResponse { Success = false, Message = $"Initial EcoCash request failed: {error}" };
         }
-        else
+
+        var responseBody = await initialResponse.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(responseBody);
+        var trackingNumber = doc.RootElement.GetProperty("trackingNumber").GetString();
+
+        // Poll for payment confirmation
+        var statusEndpoint = "https://b2bpayments.econet.co.zw/payments-service/transactions/{id}";
+
+
+
+        var maxRetries = 10;
+        var delay = 5000; // 5 seconds
+        for (int i = 0; i < maxRetries; i++)
         {
-            var errorMessage = await response.Content.ReadAsStringAsync();
-            return new PaymentResponse { Success = false, Message = $"EcoCash payment failed: {errorMessage}" };
+            await Task.Delay(delay);
+            //var statusResponse = await httpClient.GetAsync(config["EcopayTrackUrl"]);
+            var statusRequest = new HttpRequestMessage(HttpMethod.Get, statusEndpoint);
+            statusRequest.Headers.Authorization = new AuthenticationHeaderValue("Authorization", $"Bearer {config["EcopayApiToken"]}");
+            var statusResponse = await httpClient.SendAsync(statusRequest);
+
+            if (statusResponse.IsSuccessStatusCode)
+            {
+                var statusContent = await statusResponse.Content.ReadAsStringAsync();
+                using var statusDoc = JsonDocument.Parse(statusContent);
+                var status = statusDoc.RootElement.GetProperty("transactionStatus").GetString(); // e.g., "SUCCESS", "PENDING", "FAILED"
+
+                if (status == "SUCCESS")
+                    return new PaymentResponse { Success = true, Message = "EcoCash payment confirmed" };
+                if (status == "FAILED")
+                    return new PaymentResponse { Success = false, Message = "EcoCash payment failed" };
+            }
         }
+
+        return new PaymentResponse { Success = false, Message = "EcoCash payment not confirmed in time" };
     }
 
-    
+
 }

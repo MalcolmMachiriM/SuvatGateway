@@ -1,4 +1,6 @@
 using System;
+using AutoMapper;
+using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
 using SuvatGatewayBackend.DTOs;
 using SuvatGatewayBackend.Entities;
@@ -6,16 +8,21 @@ using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Data;
 
-public class UserRepository(DataContext context) : IUserRepository
+public class UserRepository(DataContext context, IMapper mapper) : IUserRepository
 {
     public async Task<MemberDto?> GetMemberAsync(string username)
     {
-        return await context.Users.SingleOrDefaultAsync(x => x.UserName == username);
+        return await context.Users
+        .Where(x=> x.UserName == username)
+        .ProjectTo<MemberDto>(mapper.ConfigurationProvider)
+        .SingleOrDefaultAsync();
     }
 
-    public Task<IEnumerable<MemberDto>> GetMembersAsync()
+    public async Task<IEnumerable<MemberDto>> GetMembersAsync()
     {
-        throw new NotImplementedException();
+        return await context.Users
+        .ProjectTo<MemberDto>(mapper.ConfigurationProvider)
+        .ToListAsync();
     }
 
     public async Task<IEnumerable<AppUser>> GetUserAsync()
