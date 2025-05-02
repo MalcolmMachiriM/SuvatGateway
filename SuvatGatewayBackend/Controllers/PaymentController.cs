@@ -19,7 +19,9 @@ public class PaymentController(DataContext context, IPaymentService paymentServi
             Provider = request.ProvisionedService,
             PhoneNumber = request.Payer,
             Amount = request.Amount,
-            Timestamp = DateTime.UtcNow
+            Timestamp = DateTime.UtcNow,
+            // Status = request.TransactionStatus,
+            // TrackingNumber = request.TrackingNumber
         };
         
         context.PaymentTransactions.Add(transaction);

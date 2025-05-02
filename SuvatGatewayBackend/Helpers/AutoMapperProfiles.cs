@@ -10,6 +10,9 @@ public class AutoMapperProfiles : Profile
     AutoMapperProfiles()
     {
         CreateMap<AppUser, MemberDto>();
+        CreateMap<AppUser, RegisterDto>();
+        CreateMap<UserDto, RegisterDto>();
         CreateMap<AppBusiness, AppBusinessDto>();
+
     }
 }

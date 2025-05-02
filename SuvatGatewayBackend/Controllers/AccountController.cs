@@ -10,35 +10,15 @@ using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Controllers;
 
-public class AccountController(DataContext context, ITokenService tokenService,IUserRepository userRepository):BaseApiController
+public class AccountController( DataContext context, IUserRepository userRepository, ITokenService tokenService):BaseApiController
 {
     [HttpPost("register")] // 
     public async Task<ActionResult<UserDto>> Register(RegisterDto registerDto)
     {
         if (await UserExists(registerDto.Username)) return BadRequest("User Exists");
 
-        using var hmac = new HMACSHA512();
-
-        var user = new AppUser
-        {
-            Firstname = registerDto.Firstname,
-            Lastname = registerDto.Lastname,
-            UserName = registerDto.Username.ToLower(),
-            Email = registerDto.Email,
-            PhoneNumber = registerDto.PhoneNumber,
-            PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registerDto.Password)),
-            PasswordSalt = hmac.Key
-        };
-
-        context.Users.Add(user);
-        await context.SaveChangesAsync();
-
-        return new UserDto
-        {
-            Username = user.UserName,
-            Token = tokenService.CreateToken(user)
-
-        };
+        return Ok(await userRepository.AddMemberAsync(registerDto));
+    
     }
 
     [HttpPost("login")]

@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using AutoMapper;
 using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
@@ -8,8 +9,35 @@ using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Data;
 
-public class UserRepository(DataContext context, IMapper mapper) : IUserRepository
+public class UserRepository(DataContext context, IMapper mapper, ITokenService tokenService) : IUserRepository
 {
+    public async Task<UserDto?> AddMemberAsync(RegisterDto registerDto )
+    {
+        using var hmac = new System.Security.Cryptography.HMACSHA512();
+
+        var user = new AppUser
+        {
+            Firstname = registerDto.Firstname,
+            Lastname = registerDto.Lastname,
+            UserName = registerDto.Username.ToLower(),
+            Email = registerDto.Email,
+            PhoneNumber = registerDto.PhoneNumber,
+            PasswordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(registerDto.Password)),
+            PasswordSalt = hmac.Key
+        };
+        
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+
+        return new UserDto
+        {
+            Username = user.UserName,
+            Token = tokenService.CreateToken(user)
+
+        }
+        ;
+    }
+
     public async Task<MemberDto?> GetMemberAsync(string username)
     {
         return await context.Users
@@ -37,9 +65,9 @@ public class UserRepository(DataContext context, IMapper mapper) : IUserReposito
         return await context.Users.FindAsync(id) ;
     }
 
-    public Task<AppUser?> GetUserByUserName(string username)
+    public async Task<AppUser?> GetUserByUserName(string username)
     {
-        throw new NotImplementedException();
+        return await context.Users.SingleOrDefaultAsync(x=> x.UserName == username ) ;
     }
 
     public async Task<bool> SaveAllAsync()
