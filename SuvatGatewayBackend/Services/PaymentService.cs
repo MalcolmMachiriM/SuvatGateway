@@ -55,7 +55,7 @@ public class PaymentService(IConfiguration config, HttpClient httpClient, DataCo
      // Display OTP reference to the user and wait for input
     Console.WriteLine($"Please enter the OTP sent to {request.Payer}. Reference: {otpRef}");
     Console.Write("Enter OTP: ");
-    string enteredOtp = Console.ReadLine();
+    string? enteredOtp = Console.ReadLine();
 
     var payPayload = new
     {
