@@ -17,8 +17,8 @@ public class PaymentService(IConfiguration config, HttpClient httpClient, DataCo
         {
             case "ecocash":
                 return await ProcessEcoCashPayment(request);
-             case "omari":
-                 return await ProcessOmariPayment(request);
+            case "omari":
+                return await ProcessOmariPayment(request);
             // case "visa":
             //     return await ProcessVisaPayment(request);
             default:
@@ -30,80 +30,81 @@ public class PaymentService(IConfiguration config, HttpClient httpClient, DataCo
     {
         var reference = Guid.NewGuid().ToString();
 
-    var authPayload = new
-    {
-        msisdn = request.Payer,
-        reference = reference,
-        amount = request.Amount,
-        currency = "USD",
-        channel = "WEB"
-    };
+        var authPayload = new
+        {
+            msisdn = request.Payer,
+            reference = reference,
+            amount = request.Amount,
+            currency = request.Currency,
+            channel = request.TransType.ToUpper()
+        };
 
-    var authContent = new StringContent(JsonSerializer.Serialize(authPayload), Encoding.UTF8, "application/json");
-    httpClient.DefaultRequestHeaders.Clear();
-    httpClient.DefaultRequestHeaders.Add("X-Merchant-Key", config["_omariApiKey"]);
+        var authContent = new StringContent(JsonSerializer.Serialize(authPayload), Encoding.UTF8, "application/json");
+        httpClient.DefaultRequestHeaders.Clear();
+        // httpClient.DefaultRequestHeaders.Add("X-Merchant-Key", config["_omariApiKey"]);
+        httpClient.DefaultRequestHeaders.Add("X-Merchant-Key", config["_omariApiKey"]);
 
-    var authResponse = await httpClient.PostAsync($"{config["_omariBaseUrl"]}/auth", authContent);
-    if (!authResponse.IsSuccessStatusCode)
-        return new PaymentResponse { Success = false, Message = "Omari auth request failed" };
+        var authResponse = await httpClient.PostAsync($"{config["_omariBaseUrl"]}/auth", authContent);
+        if (!authResponse.IsSuccessStatusCode)
+            return new PaymentResponse { Success = false, Message = "Omari auth request failed" };
 
-    var authBody = await authResponse.Content.ReadAsStringAsync();
-    using var authJson = JsonDocument.Parse(authBody);
-    var otpRef = authJson.RootElement.GetProperty("otpReference").GetString();
+        var authBody = await authResponse.Content.ReadAsStringAsync();
+        using var authJson = JsonDocument.Parse(authBody);
+        var otpRef = authJson.RootElement.GetProperty("otpReference").GetString();
 
-    // Simulate OTP entry (replace with actual capture mechanism)
-     // Display OTP reference to the user and wait for input
-    Console.WriteLine($"Please enter the OTP sent to {request.Payer}. Reference: {otpRef}");
-    Console.Write("Enter OTP: ");
-    string? enteredOtp = Console.ReadLine();
+        // Simulate OTP entry ( ndichabvisa & replace with actual capture mechanism from web)
+        // Display OTP reference to the user and wait for input
+        Console.WriteLine($"Please enter the OTP sent to {request.Payer}. Reference: {otpRef}");
+        Console.Write("Enter OTP: ");
+        string? enteredOtp = Console.ReadLine();
 
-    var payPayload = new
-    {
-        msisdn = request.Payer,
-        reference = reference,
-        otp = enteredOtp
-    };
+        var payPayload = new
+        {
+            msisdn = request.Payer,
+            reference = reference,
+            otp = enteredOtp
+        };
 
 
-    var payContent = new StringContent(JsonSerializer.Serialize(payPayload), Encoding.UTF8, "application/json");
-    var payResponse = await httpClient.PostAsync($"{config["_omariBaseUrl"]}/request", payContent);
-    if (!payResponse.IsSuccessStatusCode)
-        return new PaymentResponse { Success = false, Message = "Omari payment request failed" };
+        var payContent = new StringContent(JsonSerializer.Serialize(payPayload), Encoding.UTF8, "application/json");
+        var payResponse = await httpClient.PostAsync($"{config["_omariBaseUrl"]}/request", payContent);
+        if (!payResponse.IsSuccessStatusCode)
+            return new PaymentResponse { Success = false, Message = "Omari payment request failed" };
 
-    var payBody = await payResponse.Content.ReadAsStringAsync();
-    using var payJson = JsonDocument.Parse(payBody);
-    var statusCode = payJson.RootElement.GetProperty("responseCode").GetString();
+        var payBody = await payResponse.Content.ReadAsStringAsync();
+        using var payJson = JsonDocument.Parse(payBody);
+        var statusCode = payJson.RootElement.GetProperty("responseCode").GetString();
 
-    if (statusCode == "000")
-    {
-        // Query final status from Omari
-        return await QueryOmariPaymentStatus(reference);
-    }
+        if (statusCode == "000")
+        {
+            // Query final status from Omari
+            return await QueryOmariPaymentStatus(reference);
+        }
 
-    return new PaymentResponse { Success = false, Message = "Omari payment failed" };
+        return new PaymentResponse { Success = false, Message = "Omari payment failed" };
     }
 
     private async Task<PaymentResponse> QueryOmariPaymentStatus(string reference)
-{
-    var queryUrl = $"{config["_omariBaseUrl"]}/query/{reference}";
-    var request = new HttpRequestMessage(HttpMethod.Get, queryUrl);
-    request.Headers.Add("X-Merchant-Key", config["_omariApiKey"]);
-
-    var response = await httpClient.SendAsync(request);
-    if (!response.IsSuccessStatusCode)
     {
-        var error = await response.Content.ReadAsStringAsync();
-        return new PaymentResponse { Success = false, Message = $"Omari status check failed: {error}" };
+        var queryUrl = $"{config["_omariBaseUrl"]}/query/{reference}";
+        var request = new HttpRequestMessage(HttpMethod.Get, queryUrl);
+        request.Headers.Add("X-Merchant-Key", config["_omariApiKey"]);
+
+        var response = await httpClient.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync();
+            return new PaymentResponse { Success = false, Message = $"Omari status check failed: {error}" };
+        }
+
+        var content = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(content);
+        var status = doc.RootElement.GetProperty("status").GetString();
+
+        return status == "Success"
+            ? new PaymentResponse { Success = true, Message = "Omari payment confirmed" }
+            : new PaymentResponse { Success = false, Message = $"Omari payment status: {status}" };
     }
-
-    var content = await response.Content.ReadAsStringAsync();
-    using var doc = JsonDocument.Parse(content);
-    var status = doc.RootElement.GetProperty("status").GetString();
-
-    return status == "Success"
-        ? new PaymentResponse { Success = true, Message = "Omari payment confirmed" }
-        : new PaymentResponse { Success = false, Message = $"Omari payment status: {status}" };
-}
 
     private async Task<PaymentResponse> ProcessEcoCashPayment(EcopayRequest request)
     {
@@ -135,11 +136,12 @@ public class PaymentService(IConfiguration config, HttpClient httpClient, DataCo
         var trackingNumber = doc.RootElement.GetProperty("trackingNumber").GetString();
 
         // Poll for payment confirmation
-        var statusEndpoint = "https://b2bpayments.econet.co.zw/payments-service/transactions/{id}";
+        // var statusEndpoint = "https://b2bpayments.econet.co.zw/payments-service/transactions/{id}";
+        var statusEndpoint = config["EcopayTrackUrl"]?.Replace("{id}", trackingNumber!);
 
 
 
-        var maxRetries = 10;
+        var maxRetries = 5;
         var delay = 2000; // 5 seconds
         for (int i = 0; i < maxRetries; i++)
         {
