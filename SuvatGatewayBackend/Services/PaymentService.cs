@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using SuvatGatewayBackend.Data;
 using SuvatGatewayBackend.Entities;
+using SuvatGatewayBackend.Helpers;
 using SuvatGatewayBackend.Interfaces;
 
 namespace SuvatGatewayBackend.Services;
@@ -19,6 +20,8 @@ public class PaymentService(IConfiguration config, HttpClient httpClient, DataCo
                 return await ProcessEcoCashPayment(request);
             case "omari":
                 return await ProcessOmariPayment(request);
+            case "onemoney":
+                return await ProcessOneMoneyPayment(request);
             // case "visa":
             //     return await ProcessVisaPayment(request);
             default:
@@ -178,6 +181,58 @@ public class PaymentService(IConfiguration config, HttpClient httpClient, DataCo
         return new PaymentResponse { Success = false, Message = "EcoCash payment not confirmed in time" };
     }
 
+private async Task<PaymentResponse> ProcessOneMoneyPayment(EcopayRequest request)
+{
+    string transOrderNo = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds().ToString();
+    string random = Guid.NewGuid().ToString();
+
+    var bizParams = new
+    {
+        transOrderNo,
+        amt = request.Amount,
+        currency = request.Currency,
+        mobileNo = request.Payer,
+        goodsName = "Goods/Service",
+        notifyUrl = config["OneMoneyNotifyUrl"]
+    };
+
+    var bizJson = JsonSerializer.Serialize(bizParams);
+    var aesKey = OneMoneyCryptoHelper.GenerateAESKey();
+    var encryptData = OneMoneyCryptoHelper.EncryptWithAES(bizJson, aesKey);
+    var encryptKey = OneMoneyCryptoHelper.EncryptWithRSA(aesKey, config["OneMoneyPublicKey"]);
+    var signData = OneMoneyCryptoHelper.ComputeSha256Hash(bizJson);
+
+    var payload = new
+    {
+        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+        random,
+        language = "en",
+        encryptKeyId = config["OneMoneyKeyId"],
+        merNo = config["OneMoneyMerchantCode"],
+        encryptData,
+        encryptKey,
+        signData
+    };
+
+    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+    var response = await httpClient.PostAsync($"{config["OneMoneyBaseUrl"]}/api/pay/payment/push", content);
+
+    if (!response.IsSuccessStatusCode)
+    {
+        var error = await response.Content.ReadAsStringAsync();
+        return new PaymentResponse { Success = false, Message = $"OneMoney request failed: {error}" };
+    }
+
+    var body = await response.Content.ReadAsStringAsync();
+    using var json = JsonDocument.Parse(body);
+    var status = json.RootElement.GetProperty("status").GetString();
+
+    if (status == "0")
+        return new PaymentResponse { Success = true, Message = "OneMoney push sent successfully" };
+
+    return new PaymentResponse { Success = false, Message = $"OneMoney returned status: {status}" };
+}
 
 
 }
